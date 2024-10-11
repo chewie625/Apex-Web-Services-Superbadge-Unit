@@ -1,0 +1,49 @@
+@RestResource(urlMapping='/ProductZoning/*')
+global with sharing class ProductZoningService {
+    @HttpGet
+    global static String getPermitFlyZone() {
+        RestRequest request = RestContext.request;
+        System.debug('Request Headers: ' + request.headers);
+        // Get the CountryCode from the request headers
+        String cc = request.headers.get('CountryCode');
+        system.debug('Country code: ' + cc);
+        String result;
+        List<Product_Geo_Mapping__mdt> resultlist;
+        //default to 'US' if not provided
+        if (String.isBlank(cc)) {
+            cc = 'US';
+        } 
+        System.debug('Request URI From actual Class: ' + request.requestUri);
+        // grab the ProductCode from the end of the URL
+        //String pc = request.requestURI.substring(request.requestURI.lastIndexOf('/')+1);
+        string pc = request.params.get('ProductCode');
+        system.debug('Product From Actual Method: ' + pc);
+        // get the Product Family from the ProductCode
+        List<Product2> pflist = [SELECT Family 
+                                 FROM Product2 
+                                 WHERE ProductCode =: pc LIMIT 1];
+        
+        if (pflist.size() == 0){
+            result ='ProductCode is missing or doesn\'t exist';
+            return result;
+        }
+        else{
+            // get the Permissible Fly Zone from the Product Geo Mapping CMT
+            string pf = pflist[0].Family;
+            resultlist = [SELECT Permissible_Fly_Zone__c
+                          FROM Product_Geo_Mapping__mdt
+                          WHERE Product_Family__c = :pf AND
+                          Country_Code__c =:cc LIMIT 1 ];
+        }
+        //Check resultlist is empty in custom metadata
+        if (resultlist.size() == 0){
+            //if empty print this statment
+            result = 'Confirm with the local authorities';   
+        }
+        else {
+            //if not gives the permissible Fly Zone
+            result = resultlist[0].Permissible_Fly_Zone__c;
+        }
+        return result;    
+    }
+}

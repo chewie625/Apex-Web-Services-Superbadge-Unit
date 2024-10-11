@@ -1,0 +1,31 @@
+@isTest
+private class AssetServiceTest {
+    @isTest static void testCreateClaim() {
+        //Create test Account
+        Account testAcct = new Account(Name = 'TestAccount');
+        insert testAcct;
+        //Create test asset
+        Asset testAsset = new Asset(Name = 'Test',	Asset_Identifier__c = '556699',AccountId = testAcct.Id);
+        insert testAsset;
+        System.debug('Test Asset ID from Test Class: ' + testAsset.Asset_Identifier__c);
+        //Create test Insurance
+        Insurance__c testInsure = new Insurance__C(Asset__c = testAsset.Id, Coverage__c='Comprehensive', Active__c = true);
+        insert testInsure;
+        //Create test Claim
+        Claim__c testClaim = new Claim__c(Type__c = 'Loss', Asset__c = testAsset.Id, Insurance__c =testInsure.Id );
+        insert testClaim;
+        
+        //Call the method to test device not found
+        String result = AssetService.reportLostDevice('778899');
+        Assert.areEqual('No device found', result);
+        //Remove claim and test
+         //delete testInsure;
+         //Assert.areEqual('No coverage. Asset status adjusted to Lost.',result);
+        //Remove test insurance and test;
+        delete testClaim;
+        result  = AssetService.reportLostDevice('556699');
+		System.debug('Result from Test Class:' + result);
+        Assert.isNotNull(result);
+        
+    } 
+}

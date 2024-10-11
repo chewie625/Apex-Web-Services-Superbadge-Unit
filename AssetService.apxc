@@ -1,0 +1,76 @@
+@RestResource(urlMapping='/lost')
+global with sharing class AssetService {
+    @httpPost
+    global static string reportLostDevice(String assetIdentifier){
+        
+        //Retrieve Asset, 
+        System.debug('Asset ID: ' + assetIdentifier); 
+        List<Asset> asset = [SELECT Name, Status, Asset_Identifier__c FROM Asset WHERE Asset_Identifier__c = :assetIdentifier LIMIT 1];
+        
+        //empty list of Asset, so return 'no device found'
+        if(asset.size() == 0){
+            return 'No device found';
+        }
+        //If asset found,check if have insurance
+        else{
+            return checkInsurance(asset[0], assetIdentifier); 
+        }
+        
+    }
+    private static string checkInsurance(Asset a, String assetId){
+        //query have active insurance 
+        List<Insurance__c> insure = [SELECT NAME FROM Insurance__c WHERE Active__c = true AND Coverage__c ='Comprehensive' AND Asset__r.Asset_Identifier__c =: assetId LIMIT 1];
+        
+        //if not insurance
+        if(insure.size() == 0 ){
+            System.debug('Asset Status:' + a.Status);
+            
+            //put asset = lost
+            a.Status = 'Lost';
+            
+            // need this DML to update it. 
+            update a;
+            System.debug('Asset Status:' + a.Status);
+            return 'No coverage. Asset status adjusted to Lost.';
+        } else {
+            
+            // if have active insurance then check if have a claim filed already.
+            a.Status = 'Lost';
+            update a;
+            System.debug('Asset Status:' + a.Status);
+            system.debug('Insurance Name:' + insure[0].Name);
+            return checkClaimNumber(insure[0], assetId);
+        }
+        
+    }
+    private static string checkClaimNumber(Insurance__c insure, String assetId){
+        
+        //query the clam number
+        List<Claim__c> claim = [SELECT Name, Type__c, Asset__c, Insurance__c FROM Claim__c WHERE Type__c = 'Loss' AND Asset__r.Asset_Identifier__c =:assetId AND Insurance__r.Name=: insure.NAME LIMIT 1];
+        // get the id of the asset for claim creation. 
+        Asset idFromAsset = [SELECT ID FROM Asset WHERE Asset_Identifier__c =:assetId];
+        
+        // Declare newClaim 
+        Claim__c newClaim;
+        
+        //check if have a loss claim already, if not create one	
+        if (claim.size() == 0 ){
+            // Create a claim with Type__c = loss;
+            newClaim = new Claim__c(Asset__c = idFromAsset.id, Insurance__c = insure.id,Type__c = 'Loss');
+            insert newClaim;
+            newClaim = [SELECT Name FROM Claim__c WHERE Id = :newClaim.Id];
+            System.debug('Claim Number: ' + newClaim.Name); 
+            return newClaim.Name;  
+        }
+        //else return the claim number cos already have one. 
+        else {
+            return claim[0].Name + ' already filed.'; 
+            
+        }
+        
+    }  
+}
+
+//Remember the end point is - "https://yourInstance.my.salesforce.com/services/apexrest/lost"
+//Find out your Instance by going to setup-> My domain.(e.g. davidtantradingltd2-dev-ed)
+//Json string (the body) is like this - {"assetIdentifier":"2345678"}

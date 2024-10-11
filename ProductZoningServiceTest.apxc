@@ -1,0 +1,49 @@
+@isTest
+private class ProductZoningServiceTest {
+    @isTest static void testgetPermitFlyZone(){
+        // Set up a test request
+        RestRequest request = new RestRequest();
+        string  testpc = createTestRecord();
+        // Set request properties
+        request.requestUri =
+            'https://davidtantradingltd2-dev-ed.develop.my.salesforce.com/services/apexrest/ProductZoning/';     
+        request.httpMethod = 'GET';
+        request.addHeader('Content-Type', 'application/json');
+        request.addParameter('ProductCode', testpc);
+        RestContext.request = request;
+        System.debug('Request URI: ' + request.requestUri);
+        // Call the method to test
+        string permit= ProductZoningService.getPermitFlyZone();
+        // Verify results
+        Assert.isTrue(permit != null);
+        Assert.areEqual('Recommended', permit);
+    }
+    @isTest static void testNoProductCode(){
+        RestRequest request = new RestRequest();
+        Product2 noPcProduct = new Product2(Name = 'GC5040',
+                                            ProductCode = 'No Product Code',
+                                            Family = 'Single-Rotor');
+        string  nopc = noPcProduct.ProductCode;
+        request.requestUri ='https://davidtantradingltd2-dev-ed.develop.my.salesforce.com/services/apexrest/ProductZoning/';     
+        request.httpMethod = 'GET';
+        request.addHeader('Content-Type', 'application/json');
+        request.addParameter('ProductCode', nopc);
+        RestContext.request = request;
+        System.debug('Request URI: ' + request.requestUri);
+        // Call the method to test
+        string permit= ProductZoningService.getPermitFlyZone();
+        // Verify results
+        Assert.areEqual('ProductCode is missing or doesn\'t exist', permit);
+        
+    }
+    //helper method to create test record
+    static string createTestRecord(){
+        Product2 test = new Product2(Name = 'Product for Testing',
+                                     ProductCode = 'GC5040',
+                                     Family = 'Single-Rotor');
+        insert test;
+        system.debug('Product Codem From Test Class: ' + test.ProductCode);
+        return test.ProductCode;
+    }
+    
+}
